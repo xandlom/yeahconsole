@@ -48,7 +48,7 @@ char *progname, command[256];
 int revert_to;
 int screen;
 int opt_x, opt_width, opt_height, opt_delay, opt_bw, opt_step,
-  height, opt_restart, opt_restart_hidden;
+    height, opt_restart;
 char *opt_color;
 char *opt_term;
 KeySym opt_key;
@@ -72,8 +72,7 @@ int main(int argc, char *argv[])
     XEvent event;
     int hidden = 1;
     int fullscreen = 0;
-    int i;
-    int old_height = 0;
+    int i, old_height = 0;
     Window last_focused, current_focused;
 	
     /* strip the path from argv[0] if there is one */
@@ -191,18 +190,10 @@ int main(int argc, char *argv[])
 	case UnmapNotify:
 	    if (event.xunmap.window == termwin) {
 		if (opt_restart) {
-                    if (opt_restart_hidden) {
-                        roll(UP);
-                        hidden = 1;
-                    }
 		    init_xterm(0);
 		    XSync(dpy, False);
-                    if (opt_restart_hidden && last_focused)
-                        XSetInputFocus(dpy, last_focused,
-                                       RevertToPointerRoot, CurrentTime);
-                    else
-                        XSetInputFocus(dpy, termwin, RevertToPointerRoot,
-                                       CurrentTime);
+		    XSetInputFocus(dpy, termwin, RevertToPointerRoot,
+				   CurrentTime);
 		} else {
 		    if (last_focused)
 			XSetInputFocus(dpy, last_focused,
@@ -273,8 +264,6 @@ void get_defaults()
     opt_step = opt ? atoi(opt) : 1;
     opt = XGetDefault(dpy, progname, "restart");
     opt_restart = opt ? atoi(opt) : 0;
-    opt = XGetDefault(dpy, progname, "restartHidden");
-    opt_restart_hidden = opt ? atoi(opt) : 0;
     opt = XGetDefault(dpy, progname, "term");
     opt_term = opt ? opt : "xterm";
     opt = XGetDefault(dpy, progname, "toggleKey");
@@ -356,8 +345,14 @@ void init_xterm(move)
     XEvent ev;
     long dummy;
     XSizeHints *size;
+    int result = 0;
 
-    system(command);
+    result = system(command);
+    if (result != 0)
+    {
+    	printf("ERROR: command is not excuted");
+	return;
+    }
     while (1) {
 	XMaskEvent(dpy, SubstructureNotifyMask, &ev);
 	if (ev.type == CreateNotify || ev.type == MapNotify) {
